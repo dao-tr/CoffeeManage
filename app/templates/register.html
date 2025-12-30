@@ -1,0 +1,60 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Đăng ký{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 col-xs-12">
+        <h1 class="text-center text-success mt-4">ĐĂNG KÝ TÀI KHOẢN</h1>
+
+        {% if err_msg %}
+        <div class="alert alert-danger text-center">
+            {{ err_msg }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="{{ url_for('register') }}" enctype="multipart/form-data" class="border p-4 shadow-sm rounded mt-3">
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="name" class="font-weight-bold">Họ và tên</label>
+                    <input type="text" class="form-control" id="name" name="name" required placeholder="Nhập họ tên..."/>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="username" class="font-weight-bold">Tên đăng nhập</label>
+                    <input type="text" class="form-control" id="username" name="username" required placeholder="Nhập username..."/>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="pass" class="font-weight-bold">Mật khẩu</label>
+                    <input type="password" class="form-control" id="pass" name="password" required placeholder="Mật khẩu..."/>
+                </div>
+                <div class="form-group col-md-6">
+                    <label for="confirm" class="font-weight-bold">Nhập lại mật khẩu</label>
+                    <input type="password" class="form-control" id="confirm" name="confirm" required placeholder="Xác nhận mật khẩu..."/>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="font-weight-bold">Email</label>
+                <input type="email" class="form-control" id="email" name="email" placeholder="email@example.com" />
+            </div>
+
+            <div class="form-group">
+                <label for="avatar" class="font-weight-bold">Ảnh đại diện</label>
+                <input type="file" class="form-control-file border p-1" id="avatar" name="avatar" />
+            </div>
+
+            <div class="form-group mt-4">
+                <input type="submit" value="Đăng ký" class="btn btn-success btn-block" />
+            </div>
+
+            <div class="text-center mt-3">
+                <p>Đã có tài khoản? <a href="{{ url_for('signin') }}" class="text-danger">Đăng nhập tại đây</a></p>
+            </div>
+        </form>
+    </div>
+</div>
+<br><br>
+{% endblock %}

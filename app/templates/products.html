@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Danh sách sản phẩm</title>
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet" />
+</head>
+<body>
+    <div class="container">
+        <h1 class="subject">D Coffee</h1>
+
+        <hr>
+            <form>
+                <input type="text" name="keyword" placeholder="Tìm món: "/>
+                <input type="number" name="from_price" placeholder="Từ: " />
+                <input type="number" name="to_price" placeholder="Đến: " />
+                <input type="submit" value="Tìm" />
+
+            </form>
+        <hr>
+
+        <table border="1" class="product">
+            <tr>
+                <th></th>
+                <th>MaSP</th>
+                <th>TenSP</th>
+                <th>Des</th>
+                <th>Gia</th>
+            </tr>
+            {% for p in products %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('product_detail', product_id=p.id) }}">
+                        <img src="{{ p.image }}" alt="{{ p.name }}" width="120" />
+                    </a>
+                </td>
+                <td>{{ p.id }}</td>
+                <td>{{ p.name }}</td>
+                <td>{{ p.description }}</td>
+                <td>{{ "{:,.0f}".format(p.price) }} VND</td>
+            </tr>
+            {% endfor %}
+        </table>
+    </div>
+</body>
+</html>

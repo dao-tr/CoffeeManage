@@ -1,0 +1,185 @@
+{% extends 'admin/base.html' %}
+
+{% block body %}
+<div class="container-fluid">
+    <h2 class="text-center text-primary mt-3">LẬP HÓA ĐƠN GỌI MÓN</h2>
+    
+    <div class="card p-3 mb-4 shadow-sm">
+        <div class="row">
+            <div class="col-md-5">
+                <label>Chọn món:</label>
+                <select id="productSelect" class="form-control">
+                    {% for p in products %}
+                    <option value="{{ p.id }}" data-price="{{ p.price }}" data-name="{{ p.name }}">
+                        {{ p.name }} - {{ "{:,.0f}".format(p.price) }} VNĐ
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>Số lượng:</label>
+                <input type="number" id="productQty" class="form-control" value="1" min="1">
+            </div>
+            <div class="col-md-4 d-flex align-items-end">
+                <button class="btn btn-success btn-block" onclick="addToBill()">
+                    <i class="fa fa-plus"></i> Thêm món
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-3 shadow">
+        <h4 class="mb-3">Chi tiết hóa đơn</h4>
+        <table class="table table-bordered table-hover">
+            <thead class="thead-dark">
+                <tr>
+                    <th style="width: 5%">STT</th>
+                    <th style="width: 40%">Tên món</th>
+                    <th style="width: 15%">Số lượng</th>
+                    <th style="width: 20%">Đơn giá (VNĐ)</th>
+                    <th style="width: 20%">Thành tiền</th>
+                    <th style="width: 5%"></th>
+                </tr>
+            </thead>
+            <tbody id="billBody">
+                </tbody>
+        </table>
+
+        <div class="row justify-content-end">
+            <div class="col-md-4">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-right">Tổng cộng:</th>
+                        <td class="text-right"><span id="subTotal">0</span> VNĐ</td>
+                    </tr>
+                    <tr>
+                        <th class="text-right">Phí phục vụ (5%):</th>
+                        <td class="text-right"><span id="serviceFee">0</span> VNĐ</td>
+                    </tr>
+                    <tr class="border-top border-dark">
+                        <th class="text-right text-danger" style="font-size: 1.2em;">TỔNG THANH TOÁN:</th>
+                        <td class="text-right text-danger font-weight-bold" style="font-size: 1.2em;">
+                            <span id="finalTotal">0</span> VNĐ
+                        </td>
+                    </tr>
+                </table>
+                
+                <button class="btn btn-primary btn-lg btn-block mt-2" onclick="saveReceipt()">
+                    LƯU HÓA ĐƠN
+                </button>
+                <div class="mt-2 text-muted small font-italic text-right">
+                    * Quy định: Phí phục vụ 5%, tối đa 10 món.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let billItems = [];
+
+    function addToBill() {
+        //tối đa 10 món
+        if (billItems.length >= 10) {
+            alert("QUY ĐỊNH: Mỗi hóa đơn tối đa 10 món!");
+            return;
+        }
+
+        const select = document.getElementById('productSelect');
+        const option = select.options[select.selectedIndex];
+        const id = parseInt(option.value);
+        const name = option.getAttribute('data-name');
+        const price = parseFloat(option.getAttribute('data-price'));
+        const qty = parseInt(document.getElementById('productQty').value);
+
+        if (qty <= 0) {
+            alert("Số lượng phải lớn hơn 0");
+            return;
+        }
+
+        // Kiểm tra xem món đã có trong list chưa để cộng dồn
+        const existingItem = billItems.find(item => item.id === id);
+        if (existingItem) {
+            existingItem.quantity += qty;
+        } else {
+            billItems.push({
+                id: id,
+                name: name,
+                price: price,
+                quantity: qty
+            });
+        }
+
+        renderBill();
+    }
+
+    function removeItem(index) {
+        if (confirm('Bạn muốn xóa món này?')) {
+            billItems.splice(index, 1);
+            renderBill();
+        }
+    }
+
+    function renderBill() {
+        const tbody = document.getElementById('billBody');
+        tbody.innerHTML = '';
+        let subTotal = 0;
+
+        billItems.forEach((item, index) => {
+            const total = item.price * item.quantity;
+            subTotal += total;
+
+            const row = `
+                <tr>
+                    <td>${index + 1}</td>
+                    <td>${item.name}</td>
+                    <td>${item.quantity}</td>
+                    <td>${item.price.toLocaleString()}</td>
+                    <td>${total.toLocaleString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-danger" onclick="removeItem(${index})">&times;</button>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        });
+
+        //Tính phí phục vụ
+        const serviceFee = subTotal * 0.05;
+        const finalTotal = subTotal + serviceFee;
+
+        //Giao diện
+        document.getElementById('subTotal').innerText = subTotal.toLocaleString();
+        document.getElementById('serviceFee').innerText = serviceFee.toLocaleString();
+        document.getElementById('finalTotal').innerText = finalTotal.toLocaleString();
+    }
+
+    function saveReceipt() {
+        if (billItems.length === 0) {
+            alert("Vui lòng chọn món trước khi lưu!");
+            return;
+        }
+
+        if (!confirm("Xác nhận lập hóa đơn này?")) return;
+
+        fetch('/admin/create-receipt/save', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ items: billItems })
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.code === 200) {
+                alert(data.msg);
+                billItems = [];
+                renderBill();
+            } else {
+                alert("Lỗi: " + data.msg);
+            }
+        })
+        .catch(err => console.error(err));
+    }
+</script>
+{% endblock %}

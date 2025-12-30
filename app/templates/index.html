@@ -1,0 +1,38 @@
+{% extends 'layout/base.html' %}
+
+{% block title %}Trang chủ{% endblock %}
+
+{% block content %}
+<h1 class="subject">D-coffee</h1>
+
+{% if pages > 1 %}
+<ul class="pagination">
+    {% for idx in range(1, pages+1) %}
+    <li class="page-item"><a class="page-link" href="{{ url_for('home', page=idx) }}">{{ idx }}</a></li>
+    {% endfor %}
+</ul>
+{% endif %}
+{% if products %}
+<div class="row">
+    {% for p in products %}
+    <div class="col-md-3 col-xs-12" style="padding: 5px">
+        <div class="card" style="padding: 5px">
+            {% if p.image and ('http' in p.image) %}
+                <img src="{{ p.image }}" class="card-img-top" alt="{{ p.name }}" />
+            {% else %}
+                <img class="card-img-top" src="{{ url_for('static', filename=p.image) }}" alt="{{ p.name }}">
+            {% endif %}
+            <div class="card-body">
+                <h4 class="card-title">{{ p.name }}</h4>
+                <p class="card-text">{{ "{:,.0f}".format(p.price) }} VND</p>
+                <a href="#" class="btn btn-primary" onclick="addToCart({{ p.id }}, '{{ p.name }}', {{ p.price }})">Thêm</a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p><i>Không có sản phẩm</i></p>
+    {% endif %}
+</div>
+
+{% endblock %}
