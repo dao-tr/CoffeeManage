@@ -1,7 +1,6 @@
 function addToCart(id, name, price) {
     event.preventDefault()
 
-    //promise
     fetch('/api/add-cart', {
         method: 'post',
         body: JSON.stringify({
@@ -13,71 +12,49 @@ function addToCart(id, name, price) {
             'Content-Type': 'application/json'
         }
     }).then(function(res) {
-        console.info(res)
         return res.json()
     }).then(function(data) {
-        console.info(data)
+        if (data.code === 400) {
+        }
 
-        let counter = document.getElementsByClassName('cart- counter')
+        let counter = document.getElementsByClassName('cart-counter')
         for (let i = 0; i < counter.length; i++)
-          counter[i].innerText = data.total_quantity
+            counter[i].innerText = data.total_quantity
     }).catch(function(err) {
         console.error(err)
     })
 }
 
-function pay() {
-    if (confirm("Bạn muốn thanh toán?") == true) {
-        fetch('/api/pay', {
-            method: 'post'
-        }).then(function(res) {
-            return res.json()
-        }).then(function(data) {
-            if (data.code == 200)
-                location.reload()
-        }).catch(function(err) {
-            console.error(err)
-        })
-    }
-}
+function updateCart(productId, obj) {
+    let quantity = parseInt(obj.value);
 
-function updateCart(id, obj) {
     fetch('/api/update-cart', {
         method: 'put',
         body: JSON.stringify({
-            'id': id,
-            'quantity': parseInt(obj.value)
+            'id': productId,
+            'quantity': quantity
         }),
         headers: {
             'Content-Type': 'application/json'
         }
     }).then(res => res.json()).then(data => {
-        let counter = document.getElementsByClassName('cart-counter')
-        for (let i = 0; i < counter.length; i++)
-          counter[i].innerText = data.total_quantity
+        // Kiểm tra code trả về từ server
+        if (data.code === 400) {
+            alert(data.msg); // Hiện thông báo "Tổng số lượng... không được vượt quá 10"
 
-          let amount = document.getElementById('total-amount')
-          amount.innerText = new Intl.NumberFormat().format(data.total_amount)
-    })
-}
-
-function deleteCart(id) {
-    if (confirm("Xác nhận xóa sản phẩm?") == true) {
-        fetch('/api/delete-cart/' + id, {
-        method: 'delete',
-        headers: {
-            'Content-Type': 'application/json'
+            // Nếu server trả về số lượng cũ, reset ô input lại
+            if (data.data && data.data.old_quantity) {
+                obj.value = data.data.old_quantity;
+            }
         }
-        }).then(res => res.json()).then(data => {
-            let counter = document.getElementsByClassName('cart-counter')
-            for (let i = 0; i < counter.length; i++)
-              counter[i].innerText = data.total_quantity
 
-              let amount = document.getElementById('total-amount')
-              amount.innerText = new Intl.NumberFormat().format(data.total_amount)
+        let counter = document.getElementsByClassName('cart-counter');
+        for (let i = 0; i < counter.length; i++)
+            counter[i].innerText = data.total_quantity;
 
-              let e = document.getElementById("product" + id)
-              e.style.display = "none"
-        }).catch(err => console.error(err))
-    }
+        let amount = document.getElementById('total-amount');
+        if (amount)
+            amount.innerText = new Intl.NumberFormat().format(data.total_amount) + " VND";
+
+    }).catch(err => console.error(err));
 }

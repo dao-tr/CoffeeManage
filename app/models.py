@@ -31,7 +31,7 @@ class Product(BaseModel):
     create_date = Column(DateTime, default=datetime.now)
     active = Column(Boolean, default=True)
     category_id = Column(Integer, ForeignKey(Category.id), nullable=False)
-    receipt_detail = relationship('ReceiptDetail', backref='product', lazy=True)
+    # receipt_detail = relationship('ReceiptDetail', backref='product', lazy=True)
 
     def __str__(self):
         return self.name
@@ -62,6 +62,13 @@ class Receipt(BaseModel):
     created_date = Column(DateTime, default=datetime.now)
     details = relationship('ReceiptDetail', backref='receipt', lazy=True)
 
+    @property
+    def total_amount(self):
+        total = 0
+        for detail in self.details:
+            total += detail.quantity * detail.unit_price
+        return total
+
 class ReceiptDetail(db.Model):
     __tablename__ = 'receipt_detail'
     receipt_id = Column(Integer, ForeignKey(Receipt.id), nullable=False, primary_key=True)
@@ -69,6 +76,7 @@ class ReceiptDetail(db.Model):
     quantity = Column(Integer, default=0)
     unit_price = Column(Float, default=0)
     # receipt_date = Column(DateTime, default=datetime.now)
+    product = relationship('Product', backref='receipt_details')
 
     @property
     def total_amount(self):

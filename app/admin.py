@@ -1,3 +1,4 @@
+from flask_admin.model import InlineFormAdmin
 from app import app, db
 from flask_admin import Admin, BaseView, expose, AdminIndexView
 from flask_admin.contrib.sqla import ModelView
@@ -12,6 +13,7 @@ from markupsafe import Markup
 class AuthenticatedModelView(ModelView):
     def is_accessible(self):
         return current_user.is_authenticated and current_user.user_role.__eq__(UserRole.ADMIN)
+
 
 class ProductView(AuthenticatedModelView):
     can_delete = True
@@ -35,6 +37,7 @@ class ProductView(AuthenticatedModelView):
     column_formatters = {
         'quantity': quantity_warning
     }
+
 
 class CreateReceiptView(BaseView):
     @expose('/')
@@ -72,6 +75,12 @@ class CreateReceiptView(BaseView):
     def is_accessible(self):
         return current_user.is_authenticated and current_user.user_role == UserRole.ADMIN
 
+
+class ReceiptDetailInline(InlineFormAdmin):
+    model = ReceiptDetail
+    form_columns = ['product', 'quantity', 'unit_price']
+
+
 class ReceiptView(AuthenticatedModelView):
     column_display_pk = True
     can_create = False
@@ -80,7 +89,11 @@ class ReceiptView(AuthenticatedModelView):
     can_export = True
     can_view_details = True
 
+    inline_models = (ReceiptDetailInline(ReceiptDetail),)
+
     column_list = ['id', 'user', 'created_date', 'product_count', 'total_amount']
+
+    column_details_list = ['id', 'user', 'created_date', 'details', 'total_amount']
 
     column_labels = {
         'id': 'Mã hóa đơn',
@@ -98,7 +111,7 @@ class ReceiptView(AuthenticatedModelView):
         final_total = total + (total * 0.05)
         return "{:,.0f}".format(final_total)
 
-    #Đếm món
+    # Đếm món
     def _format_count(view, context, model, name):
         return len(model.details)
 
@@ -107,12 +120,70 @@ class ReceiptView(AuthenticatedModelView):
             return model.created_date.strftime('%d/%m/%Y %H:%M:%S')
         return ""
 
+    def _format_details(view, context, model, name):
+        if not model.details:
+            return "Không có sản phẩm"
+
+        html = '''
+            <table class="table table-bordered table-striped table-sm">
+                <thead>
+                    <tr>
+                        <th>Tên món</th>
+                        <th>Số lượng</th>
+                        <th>Đơn giá</th>
+                        <th>Thành tiền</th>
+                    </tr>
+                </thead>
+                <tbody>
+        '''
+
+        sum_amount = 0
+        for dt in model.details:
+            amount = dt.quantity * dt.unit_price
+            sum_amount += amount
+
+            p_name = dt.product.name if dt.product else "Sản phẩm đã xóa"
+
+            html += f'''
+                <tr>
+                    <td>{p_name}</td>
+                    <td>{dt.quantity}</td>
+                    <td>{dt.unit_price:,.0f}</td>
+                    <td>{amount:,.0f}</td>
+                </tr>
+            '''
+
+        service_fee = sum_amount * 0.05
+        final_total = sum_amount + service_fee
+
+        html += f'''
+                <tr>
+                    <td colspan="3" class="text-right"><b>Tạm tính:</b></td>
+                    <td>{sum_amount:,.0f}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-right"><b>Phí phục vụ (5%):</b></td>
+                    <td>{service_fee:,.0f}</td>
+                </tr>
+                <tr class="table-success">
+                    <td colspan="3" class="text-right"><b>TỔNG CỘNG:</b></td>
+                    <td><b>{final_total:,.0f} VNĐ</b></td>
+                </tr>
+            </tbody>
+        </table>
+        '''
+
+        return Markup(html)
+
     column_formatters = {
         'total_amount': _format_money,
         'product_count': _format_count,
-        'created_date': _format_date
+        'created_date': _format_date,
+        'details': _format_details
     }
 
+
+# 6. Các View khác
 class LogoutView(BaseView):
     @expose('/')
     def index(self):
@@ -122,10 +193,12 @@ class LogoutView(BaseView):
     def is_accessible(self):
         return current_user.is_authenticated
 
+
 class MyAdminIndex(AdminIndexView):
     @expose('/')
     def index(self):
         return self.render('admin/index.html', stats=utils.category_stats())
+
 
 class StatsView(BaseView):
     @expose('/')
@@ -142,7 +215,8 @@ class StatsView(BaseView):
     def is_accessible(self):
         return current_user.is_authenticated and current_user.user_role == UserRole.ADMIN
 
-admin = Admin(app=app,name="D-coffee Administration", index_view=MyAdminIndex())
+
+admin = Admin(app=app, name="D-coffee Administration", index_view=MyAdminIndex())
 
 admin.add_view(AuthenticatedModelView(Category, db.session))
 admin.add_view(ProductView(Product, db.session))

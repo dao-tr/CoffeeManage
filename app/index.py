@@ -135,25 +135,32 @@ def product_detail(product_id):
 
     return render_template('product_detail.html', product=products)
 
-@app.route("/api/add-cart", methods=['post'])
+
+@app.route('/api/add-cart', methods=['post'])
 def add_to_cart():
     data = request.json
     id = str(data.get('id'))
     name = data.get('name')
     price = data.get('price')
 
-    cart = session.get('cart')
-    if not cart:
-        cart = {}
+    cart = session.get('cart', {})
 
-    if id not in cart and len(cart) >= 10:
-        return jsonify({'error_code': 400, 'msg': 'Quy định: Mỗi hóa đơn tối đa 10 món!'})
+    # 1. Tính tổng số lượng hiện tại của TẤT CẢ sản phẩm trong giỏ
+    current_total_quantity = sum(item['quantity'] for item in cart.values())
 
+    if current_total_quantity + 1 > 10:
+        # Trả về lỗi nhưng VẪN KÈM thống kê giỏ hàng (để tránh lỗi NaN/undefined ở frontend)
+        response_data = utils.count_cart(cart)
+        response_data['code'] = 400
+        response_data['msg'] = 'Tổng số lượng sản phẩm trong giỏ không được vượt quá 10!'
+        return jsonify(response_data)
+
+    # 3. Nếu chưa vượt quá 10 thì thêm vào giỏ
     if id in cart:
         cart[id]['quantity'] += 1
     else:
         cart[id] = {
-            "id": id,
+            'id': id,
             'name': name,
             'price': price,
             'quantity': 1
@@ -161,30 +168,47 @@ def add_to_cart():
 
     session['cart'] = cart
 
-    return jsonify(utils.count_cart(cart))
+    response_data = utils.count_cart(cart)
+    response_data['code'] = 200
+    return jsonify(response_data)
 
-@app.route("/api/update-cart", methods=['put'])
+
+@app.route('/api/update-cart', methods=['put'])
 def update_cart():
     data = request.json
     id = str(data.get('id'))
-    quantity = data.get('quantity')
+    try:
+        new_quantity = int(data.get('quantity'))
+    except ValueError:
+        new_quantity = 0
 
-    cart = session.get('cart')
-    if cart and id in cart:
-        cart[id]['quantity'] = quantity
+    cart = session.get('cart', {})
+
+    if id in cart:
+        current_total_quantity = sum(item['quantity'] for item in cart.values())
+        old_quantity = cart[id]['quantity']
+
+        # tính tổng số lượng mới nếu cập nhật
+        expected_total = current_total_quantity - old_quantity + new_quantity
+
+        #Kiểm tra giới hạn tổng 10 món
+        if expected_total > 10:
+            response_data = utils.count_cart(cart)
+            response_data['code'] = 400
+            response_data['msg'] = 'Tổng số lượng sản phẩm không được vượt quá 10!'
+            # Trả về số lượng cũ để JS có thể khôi phục ô input
+            response_data['data'] = {'old_quantity': old_quantity}
+            return jsonify(response_data)
+
+        #Cập nhật nếu hợp lệ
+        if new_quantity > 0:
+            cart[id]['quantity'] = new_quantity
+
         session['cart'] = cart
 
-    return jsonify(utils.count_cart(cart))
-
-@app.route("/api/delete-cart/<product_id>", methods=['delete'])
-def delete_cart(product_id):
-    cart = session.get('cart')
-
-    if cart and product_id in cart:
-        del cart[product_id]
-        session['cart'] = cart
-
-    return jsonify(utils.count_cart(cart))
+    response_data = utils.count_cart(cart)
+    response_data['code'] = 200
+    return jsonify(response_data)
 
 
 @app.route("/cart")
